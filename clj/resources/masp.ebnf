@@ -1,0 +1,13 @@
+expr = <ws> (atom | compound) <ws>
+
+<compound> = list
+
+list = <"("> expr* <")">
+
+<atom> = number / symbol
+
+number = #"\d+"
+
+symbol = #"[#\w]+"
+
+<ws> = #"\s*"
