@@ -1,4 +1,4 @@
-(ns masp.eval.vecstack-trampoline
+(ns masp.eval.veccont-trampoline
   (:refer-clojure :exclude [eval]))
 
 (declare -eval -continue -apply default-env)
