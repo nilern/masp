@@ -8,6 +8,6 @@ list = <"("> expr* <")">
 
 number = #"\d+"
 
-symbol = #"[#\w]+"
+symbol = #"[!?+\-\*/%@#\w]+"
 
 <ws> = #"\s*"

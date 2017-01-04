@@ -27,10 +27,17 @@
         [:eval ctrl dyn-env cont*])
       [:apply op operand dyn-env cont])))
 
-(defmacro mfn [formals body]
+(deftype Continuation [cont]
+  Operative
+  (operate [_ operand _ _]
+    [:continue operand cont]))
+
+(defmacro mfn* [formals & body]
+  `(Applicative. (PrimOp. (fn ~formals ~@body))))
+
+(defmacro mfn [formals & body]
   (let [cont (gensym 'cont), ignore (gensym)]
-    `(Applicative. (PrimOp. (fn [~formals ~ignore ~cont]
-                              [:continue ~body ~cont])))))
+    `(mfn* [~formals ~ignore ~cont] [:continue (do ~@body) ~cont])))
 
 (declare default-env)
 
@@ -62,6 +69,13 @@
         (let [[_ value cont] state]
           (recur [(peek cont) value cont]))
 
+        :continue-env
+        ;; TODO: fail if (not= (peek cont) :stmt)
+        ;; OR?: always have an env at (get cont (- (count cont) 2))
+        (let [[_ value env cont] state
+              cont* (assoc cont (- (count cont) 3) env)]
+          (recur [:continue value cont*]))
+
         :op
         (let [[_ value cont] state
               [operand env _] (take-last 3 cont)
@@ -80,13 +94,23 @@
                             (assoc (- (count cont) 1) (inc n))
                             (conj :arg))]
               (recur [:eval ctrl env cont*]))
-            (let [args (take-last n (drop-last 2 cont))
-                  arg (reverse (cons value args))
+            (let [args (subvec cont (- (count cont) n 2) (- (count cont) 2))
+                  arg (conj args value)
                   cont* (subvec cont 0 (- (count cont) 2 n 3))]
               (recur [:apply op arg env cont*]))))
 
+        :stmt
+        (let [[_ value cont] state
+              [env stmts _] (take-last 3 cont)]
+          (if (seq stmts)
+            (let [[stmt & stmts*] stmts
+                  cont* (assoc cont (- (count cont) 2) stmts*)]
+              (recur [:eval stmt env cont*]))
+            (let [cont* (subvec cont 0 (- (count cont) 3))]
+              (recur [:continue value cont*]))))
+
         :halt
-        (let [[_ value] state]
+        (let [[_ value _] state]
           [:ok value])
 
         :apply
@@ -96,9 +120,29 @@
 (defn op [[name formal eformal body] env cont]
   [:continue (CompoundOp. name formal eformal body env) cont])
 
-(def default-env
-  {(symbol "##sf#op") (PrimOp. op)
+(defn begin [stmts env cont]
+  (if (seq stmts)
+    (let [[stmt & stmts*] stmts
+          cont* (into cont [env stmts* :stmt])]
+      [:eval stmt env cont*])
+    [:continue nil cont]))
 
-   (symbol "##intr#head") (mfn [[x]] x)
-   (symbol "##intr#tail") (mfn [[_ & xs]] xs)
-   (symbol "##intr#cons") (mfn [x xs] (cons x xs))})
+(def default-env
+  {(symbol "#@op") (PrimOp. op)
+   (symbol "#@begin") (PrimOp. begin)
+
+   (symbol "#%wrap") (mfn [f] (Applicative. f))
+   (symbol "#%unwrap") (mfn [f] (.op f))
+   (symbol "#%eval") (mfn* [[expr env] _ cont] [:eval expr env cont])
+   (symbol "#%apply") (mfn* [[f args] env cont] [:apply f args env cont])
+   (symbol "#%call/cc") (mfn* [[f] env cont]
+                          (let [k (Applicative. (Continuation. cont))]
+                            [:apply f k env cont]))
+   (symbol "#%cont/env") (mfn* [[value env] _ cont]
+                           [:continue-env value env cont])
+
+   (symbol "#%assoc") (mfn [coll k v] (assoc coll k v))
+
+   (symbol "#%head") (mfn [[x]] x)
+   (symbol "#%tail") (mfn [[_ & xs]] xs)
+   (symbol "#%cons") (mfn [x xs] (cons x xs))})
