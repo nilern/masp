@@ -59,7 +59,11 @@
 
             (symbol? ctrl)
             (if-let [value (get env ctrl)]
-              (recur [:continue value cont])
+              (if (instance? clojure.lang.Atom value)
+                (if-let [value* @value]
+                  (recur [:continue value* cont])
+                  [:err [:unbound ctrl]])
+                (recur [:continue value cont]))
               [:err [:unbound ctrl]])
 
             :else
@@ -142,6 +146,14 @@
                            [:continue-env value env cont])
 
    (symbol "#%assoc") (mfn [coll k v] (assoc coll k v))
+   (symbol "#%assoc!") (mfn [coll k v]
+                         (update coll k
+                           (fn [ov]
+                             (if (and (instance? clojure.lang.Atom ov)
+                                      (= @ov nil))
+                               (do (reset! ov v) ov)
+                               v))))
+   (symbol "#%reserve") (mfn [coll k] (assoc coll k (atom nil)))
 
    (symbol "#%head") (mfn [[x]] x)
    (symbol "#%tail") (mfn [[_ & xs]] xs)
