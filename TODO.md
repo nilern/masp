@@ -24,3 +24,44 @@
               possible to define a new definer and use it in the same scope!
             * Defining `@letrec*/@letfn` for those who loathe `@declare` more
               than the proliferation of indentation and scopes is trivial.
+- [x] Iteration
+    * Got tail recursion and fexprs
+- [ ] Selection
+    * [ ] `@if` (other branches?)
+        - Since we have maps and closures the lambda calculus/Smalltalk trick
+          can be used:
+            * `(@if foo bar baz)` == `((tagval foo) bar baz)`
+            * (assuming `#t` == `(tag :True (@op (then _) env (eval then env))`))
+            * This avoids adding a branching primitive to the language.
+            * Tracing can remove overhead.
+    * [ ] Ad-hoc polymorphism (everything is 'generic' already)
+        - JS/Lua style (`(send foo :bar 3)` == `((get foo :bar) 3)`)?
+        - Multimethods?
+            * CLOS/Julia-style?
+            * Predicate dispatch?
+            * Clojure-style?
+        - Type classes?
+        - Avoid inheritance!
+        - Should be possible to do this within the language (like Scheme, but
+          nevertheless having some standard approach)
+- [ ] Properties
+    * Can everything have props?
+        - i.e. in Ruby even ints can have instance variables
+        - Doesn't really make sense for everything to have general-purpose
+          associative storage on the side.
+            * In this sense, everything is not an object. (Neither is everything
+              based on message passing, since we have closures **and** want more
+              general dispatch than sends provide).
+        - However, the Clojure metadata approach could be used to ameliorate the
+          lack of syntax objects somewhat.
+            * Could also store that info in a pointer-hash-indexed map on the
+              side if most objects don't have metadata
+    * Prop visibility
+        - Public/private segregation?
+            * Maybe store privates in the metadata?
+        - All or nothing?
+            * Kernel encapsulation/Arc tagging hides the fact that an object
+              has props at all.
+    * Conclusion: Maps are maps, other things are not. Tagpairs can be used for
+      encapsulation (as well as dispatch somewhere down the line). Metadata is a
+      user-friendly idea, but not central to the 'object model'.
