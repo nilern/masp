@@ -1,43 +1,7 @@
 (ns masp.eval.veccont-labels
-  (:refer-clojure :exclude [eval]))
-
-(defprotocol Operative
-  (operate [op operand dyn-env cont]))
-
-(deftype PrimOp [f]
-  Operative
-  (operate [_ operand dyn-env cont]
-    (f operand dyn-env cont)))
-
-(deftype CompoundOp [name formal eformal body lex-env]
-  Operative
-  (operate [op operand dyn-env cont]
-    (let [env (-> lex-env
-                  (assoc name op)
-                  (assoc formal operand)
-                  (assoc eformal dyn-env))]
-      [:eval body env cont])))
-
-(deftype Applicative [op]
-  Operative
-  (operate [_ operand dyn-env cont]
-    (if (seq operand)
-      (let [[ctrl & operands] operand
-            cont* (into cont [dyn-env op operands 0 :arg])]
-        [:eval ctrl dyn-env cont*])
-      [:apply op operand dyn-env cont])))
-
-(deftype Continuation [cont]
-  Operative
-  (operate [_ operand _ _]
-    [:continue operand cont]))
-
-(defmacro mfn* [formals & body]
-  `(Applicative. (PrimOp. (fn ~formals ~@body))))
-
-(defmacro mfn [formals & body]
-  (let [cont (gensym 'cont), ignore (gensym)]
-    `(mfn* [~formals ~ignore ~cont] [:continue (do ~@body) ~cont])))
+  (:refer-clojure :exclude [eval])
+  (:use masp.value)
+  (:import [masp.value Tagpair PrimOp Applicative Continuation CompoundOp]))
 
 (declare default-env)
 
@@ -157,4 +121,8 @@
 
    (symbol "#%head") (mfn [[x]] x)
    (symbol "#%tail") (mfn [[_ & xs]] xs)
-   (symbol "#%cons") (mfn [x xs] (cons x xs))})
+   (symbol "#%cons") (mfn [x xs] (conj xs x))
+
+   (symbol "#%tnew") (mfn [t v] (Tagpair. t v))
+   (symbol "#%ttag") (mfn [tv] (.tag tv))
+   (symbol "#%tval") (mfn [tv] (.value tv))})

@@ -1,13 +1,19 @@
+program = expr*
+
 expr = <ws> (atom | compound) <ws>
 
 <compound> = list
 
 list = <"("> expr* <")">
 
-<atom> = number / symbol
+<atom> = number / boolean / ignore / symbol
 
 number = #"\d+"
 
+boolean = "#t" | "#f"
+
+ignore = "#_"
+
 symbol = #"[!?+\-\*/%@#\w]+"
 
-<ws> = #"\s*"
+<ws> = #"(\s|;[^\n]*\n)*"

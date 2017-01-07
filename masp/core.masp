@@ -1,0 +1,36 @@
+;; (@def @def
+;;   (@op (name expr) env
+;;     (#%cont/env ()
+;;       (assoc env name (eval expr env)))))
+(#%cont/env ()
+  (#%assoc ((#@op get-env #_ env env))
+           ((#@op id-op operands #_ (#%head operands)) @def)
+           (#@op @def operands env
+             (#%cont/env ()
+               (#%assoc env (#%head operands)
+                        (#%eval (#%head (#%tail operands)) env))))))
+
+(@def @begin #@begin)
+
+;; (@def @op
+;;   (@op (formal eformal & body) env
+;;     (eval (list @op #_ formal eformal (cons @begin body)) env)))
+(@def @op
+  (#@op @op operands env
+    (#%eval (#%cons #@op
+              (#%cons #_
+                (#%cons (#%head operands)
+                  (#%cons (#%head (#%tail operands))
+                          (#%cons (#%cons @begin (#%tail (#%tail operands)))
+                                  ())))))
+            env)))
+
+;; (@def @if
+;;   (@op (cond then else) env
+;;     (eval ((#%tval (eval cond env)) then else) env)))
+(@def @if
+  (@op operands env
+    (#%eval ((#%tval (#%eval (#%head operands) env))
+             (#%head (#%tail operands))
+             (#%head (#%tail (#%tail operands))))
+            env)))
