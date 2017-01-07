@@ -26,8 +26,8 @@
               than the proliferation of indentation and scopes is trivial.
 - [x] Iteration
     * Got tail recursion and fexprs
-- [ ] Selection
-    * [ ] `@if` (other branches?)
+- [x] Selection
+    * [x] `@if` (other branches?)
         - Since we have maps and closures the lambda calculus/Smalltalk trick
           can be used:
             * `(@if foo bar baz)` == `((tagval foo) bar baz)`
@@ -44,7 +44,7 @@
         - Avoid inheritance!
         - Should be possible to do this within the language (like Scheme, but
           nevertheless having some standard approach)
-- [ ] Properties
+- [x] Properties
     * Can everything have props?
         - i.e. in Ruby even ints can have instance variables
         - Doesn't really make sense for everything to have general-purpose

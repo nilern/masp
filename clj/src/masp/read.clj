@@ -1,7 +1,7 @@
-(ns masp.read.sexpr
+(ns masp.read
   (:refer-clojure :exclude [read-string])
-  (:use masp.value)
-  (:require [instaparse.core :as insta])
+  (:require [masp.value :refer [ignore mfn]]
+            [instaparse.core :as insta])
   (:import masp.value.Tagpair))
 
 (def parser
