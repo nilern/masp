@@ -14,9 +14,10 @@
      :list #(apply list %&)
      :boolean #(case %
                  "#t" (Tagpair. :True (mfn [x _] x))
-                 "#f" (Tagpair. :True (mfn [_ x] x)))
+                 "#f" (Tagpair. :False (mfn [_ x] x)))
      :number #(Integer/parseInt %)
      :ignore (constantly ignore)
+     :keyword keyword
      :symbol symbol}))
 
 (def read-string

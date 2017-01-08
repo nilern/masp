@@ -3,7 +3,8 @@
   (:require [masp.value :refer [mfn mfn*]]
             [masp.read :as r]
             [masp.eval :as e])
-  (:import [masp.value Tagpair PrimOp Applicative Continuation CompoundOp]))
+  (:import [masp.value Tagpair Ignore
+                       PrimOp Applicative Continuation CompoundOp]))
 
 (defn- op [[name formal eformal body] env cont]
   [:continue (CompoundOp. name formal eformal body env) cont])
@@ -28,6 +29,25 @@
                             [:apply f k env cont]))
    (symbol "#%cont/env") (mfn* [[value env] _ cont]
                            [:continue-env value env cont])
+   (symbol "#%err") (mfn* [[value] _ cont]
+                      [:continue value [:err]])
+
+   (symbol "#%type") (mfn [val]
+                       (condp instance? val
+                         java.lang.Long :int
+                         clojure.lang.Keyword :keyword
+                         clojure.lang.Symbol :symbol
+                         Ignore :ignore
+
+                         clojure.lang.IPersistentList :list
+                         clojure.lang.IPersistentMap :map
+                         clojure.lang.IPersistentVector :vector
+                         Tagpair (.tag val)
+
+                         PrimOp :operative
+                         CompoundOp :operative
+                         Applicative :applicative
+                         Continuation :continuation))
 
    (symbol "#%assoc") (mfn [coll k v] (assoc coll k v))
    (symbol "#%assoc!") (mfn [coll k v]

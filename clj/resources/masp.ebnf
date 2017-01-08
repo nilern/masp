@@ -6,13 +6,15 @@ expr = <ws> (atom | compound) <ws>
 
 list = <"("> expr* <")">
 
-<atom> = number / boolean / ignore / symbol
+<atom> = number / boolean / ignore / keyword / symbol
 
 number = #"\d+"
 
 boolean = "#t" | "#f"
 
 ignore = "#_"
+
+keyword = <":"> symbol
 
 symbol = #"[!?+\-\*/%@#\w]+"
 

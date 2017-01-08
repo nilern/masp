@@ -73,6 +73,10 @@
       (let [[_ value _] state]
         [:ok value])
 
+      :err
+      (let [[_ value _] state]
+        [:err value])
+
       :apply
       (let [[_ op operand env cont] state]
         (recur (operate op operand env cont))))))

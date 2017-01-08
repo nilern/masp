@@ -42,7 +42,7 @@
                       (#%cons (#%head operands)
                         (#%cons (#%head (#%tail operands))
                           (#%cons #_ (#%tail (#%tail operands))))))
-                env))))
+                    env))))
 
 ;; (@def @fn
 ;;   (@op* @fn operands env
