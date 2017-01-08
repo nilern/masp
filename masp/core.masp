@@ -12,24 +12,50 @@
 
 (@def @begin #@begin)
 
-;; (@def @op
-;;   (@op (formal eformal & body) env
-;;     (eval (list @op #_ formal eformal (cons @begin body)) env)))
-(@def @op
-  (#@op @op operands env
+;; (@def @op*
+;;   (@op (self formal eformal & body) env
+;;     (eval (list #@op self formal eformal (cons @begin body)) env)))
+(@def @op*
+  (#@op @op* operands env
     (#%eval (#%cons #@op
-              (#%cons #_
-                (#%cons (#%head operands)
-                  (#%cons (#%head (#%tail operands))
-                          (#%cons (#%cons @begin (#%tail (#%tail operands)))
+              (#%cons (#%head operands)
+                (#%cons (#%head (#%tail operands))
+                  (#%cons (#%head (#%tail (#%tail operands)))
+                          (#%cons (#%cons @begin
+                                          (#%tail (#%tail (#%tail operands))))
                                   ())))))
             env)))
+
+;; (@def @op
+;;   (@op* @op operands env
+;;     (eval (list* @op* #_ operands) env)))
+(@def @op
+  (@op* @op operands env
+    (#%eval (#%cons @op* (#%cons #_ operands)) env)))
+
+;; (@def @fn*
+;;   (@op* @fn* (self formals & body) env
+;;     (wrap (eval (list* @op* self formals #_ body) env))))
+(@def @fn*
+  (@op* @fn* operands env
+    (#%wrap (#%eval (#%cons @op*
+                      (#%cons (#%head operands)
+                        (#%cons (#%head (#%tail operands))
+                          (#%cons #_ (#%tail (#%tail operands))))))
+                env))))
+
+;; (@def @fn
+;;   (@op* @fn operands env
+;;     (eval (list* @fn* #_ operands) env)))
+(@def @fn
+  (@op* @fn operands env
+    (#%eval (#%cons @fn* (#%cons #_ operands)) env)))
 
 ;; (@def @if
 ;;   (@op (cond then else) env
 ;;     (eval ((#%tval (eval cond env)) then else) env)))
 (@def @if
-  (@op operands env
+  (@op* @if operands env
     (#%eval ((#%tval (#%eval (#%head operands) env))
              (#%head (#%tail operands))
              (#%head (#%tail (#%tail operands))))
