@@ -1,38 +1,14 @@
 (ns masp.value)
 
-(defprotocol Operative
-  (operate [op operand dyn-env cont]))
-
 (deftype Tagpair [tag value])
 
-(deftype PrimOp [f]
-  Operative
-  (operate [_ operand dyn-env cont]
-    (f operand dyn-env cont)))
+(deftype PrimOp [f])
 
-(deftype CompoundOp [name formal eformal body lex-env]
-  Operative
-  (operate [op operand dyn-env cont]
-    (let [assoc-symbol (fn [env k v] (if (symbol? k) (assoc env k v) env))
-          env (-> lex-env
-                  (assoc-symbol name op)
-                  (assoc-symbol formal operand)
-                  (assoc-symbol eformal dyn-env))]
-      [:eval body env cont])))
+(deftype CompoundOp [name formal eformal body lex-env])
 
-(deftype Applicative [op]
-  Operative
-  (operate [_ operand dyn-env cont]
-    (if (seq operand)
-      (let [[ctrl & operands] operand
-            cont* (into cont [dyn-env op operands 0 :arg])]
-        [:eval ctrl dyn-env cont*])
-      [:apply op operand dyn-env cont])))
+(deftype Applicative [op])
 
-(deftype Continuation [cont]
-  Operative
-  (operate [_ operand _ _]
-    [:continue operand cont]))
+(deftype Continuation [cont])
 
 (defmacro mfn* [formals & body]
   `(Applicative. (PrimOp. (fn ~formals ~@body))))
