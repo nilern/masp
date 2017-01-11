@@ -27,8 +27,11 @@
    (symbol "#%call/cc") (mfn* [[f] env cont]
                           (let [k (Applicative. (Continuation. cont))]
                             [:apply f k env cont]))
+   ;; TODO: fail if (not= (peek cont) :stmt)
+   ;; OR?: always have an env at (get cont (- (count cont) 2))
    (symbol "#%cont/env") (mfn* [[value env] _ cont]
-                           [:continue-env value nil env cont])
+                           (let [cont* (assoc cont (- (count cont) 3) env)]
+                             [:continue value nil nil cont*]))
    (symbol "#%err") (mfn* [[value] _ cont]
                       [:continue value nil nil [:err]])
 

@@ -59,12 +59,6 @@
     :err
     [:err value]))
 
-;; TODO: fail if (not= (peek cont) :stmt)
-;; OR?: always have an env at (get cont (- (count cont) 2))
-(defn- -continue-env [value env cont]
-  (let [cont* (assoc cont (- (count cont) 3) env)]
-    [:continue value nil nil cont*]))
-
 (defn- -apply [op operand env cont]
   (condp instance? op
     PrimOp       ((.f op) operand env cont)
@@ -91,7 +85,6 @@
           (case label
             :eval         (-eval ctrl env cont)
             :continue     (-continue ctrl cont)
-            :continue-env (-continue-env ctrl env cont)
             :apply        (-apply ctrl operand env cont))]
       (if (or (= label* :ok) (= label* :err))
         state*
