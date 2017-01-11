@@ -7,14 +7,14 @@
                        PrimOp Applicative Continuation CompoundOp]))
 
 (defn- op [[name formal eformal body] env cont]
-  [:continue (CompoundOp. name formal eformal body env) cont])
+  [:continue (CompoundOp. name formal eformal body env) nil nil cont])
 
 (defn- begin [stmts env cont]
   (if (seq stmts)
     (let [[stmt & stmts*] stmts
           cont* (into cont [env stmts* :stmt])]
-      [:eval stmt env cont*])
-    [:continue nil cont]))
+      [:eval stmt nil env cont*])
+    [:continue nil nil nil cont]))
 
 (def default-env
   {(symbol "#@op") (PrimOp. op)
@@ -22,15 +22,15 @@
 
    (symbol "#%wrap") (mfn [f] (Applicative. f))
    (symbol "#%unwrap") (mfn [f] (.op f))
-   (symbol "#%eval") (mfn* [[expr env] _ cont] [:eval expr env cont])
+   (symbol "#%eval") (mfn* [[expr env] _ cont] [:eval expr nil env cont])
    (symbol "#%apply") (mfn* [[f args] env cont] [:apply f args env cont])
    (symbol "#%call/cc") (mfn* [[f] env cont]
                           (let [k (Applicative. (Continuation. cont))]
                             [:apply f k env cont]))
    (symbol "#%cont/env") (mfn* [[value env] _ cont]
-                           [:continue-env value env cont])
+                           [:continue-env value nil env cont])
    (symbol "#%err") (mfn* [[value] _ cont]
-                      [:continue value [:err]])
+                      [:continue value nil nil [:err]])
 
    (symbol "#%type") (mfn [val]
                        (condp instance? val

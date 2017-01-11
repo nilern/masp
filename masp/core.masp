@@ -60,3 +60,5 @@
              (#%head (#%tail operands))
              (#%head (#%tail (#%tail operands))))
             env)))
+
+(@if #t ((@fn xs xs) 3) 5)

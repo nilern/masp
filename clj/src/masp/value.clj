@@ -15,7 +15,7 @@
 
 (defmacro mfn [formals & body]
   (let [cont (gensym 'cont), ignore (gensym)]
-    `(mfn* [~formals ~ignore ~cont] [:continue (do ~@body) ~cont])))
+    `(mfn* [~formals ~ignore ~cont] [:continue (do ~@body) nil nil ~cont])))
 
 (deftype Ignore [])
 
