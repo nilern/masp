@@ -1,5 +1,6 @@
 (ns masp.eval
-  (:refer-clojure :exclude [eval])
+  (:refer-clojure :exclude [subvec eval])
+  (:require [clojure.core.rrb-vector :refer [subvec]])
   (:import [masp.value PrimOp Applicative Continuation CompoundOp]))
 
 (defn- -eval [ctrl env cont]
@@ -71,6 +72,8 @@
                                 (assoc-symbol (.formal op) operand)
                                 (assoc-symbol (.eformal op) env))]
                    [:eval (.body op) nil env* cont])
+    ;; FIXME: should remove `:op` frame from cont:
+    ;; FIXME: `(.op op)` should probably get `op` as (.name (.op op)):
     Applicative  (let [op (.op op)]
                    (if (seq operand)
                      (let [[ctrl & operands] operand
@@ -81,11 +84,12 @@
 
 (defn eval [ctrl env cont]
   (loop [label :eval, ctrl ctrl, operand nil, env env, cont cont]
+    (println (class cont))
     (let [[label* :as state*]
           (case label
-            :eval         (-eval ctrl env cont)
-            :continue     (-continue ctrl cont)
-            :apply        (-apply ctrl operand env cont))]
+            :eval     (-eval ctrl env cont)
+            :continue (-continue ctrl cont)
+            :apply    (-apply ctrl operand env cont))]
       (if (or (= label* :ok) (= label* :err))
         state*
         (let [[label* ctrl* operand* env* cont*] state*]
