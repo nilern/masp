@@ -1,3 +1,5 @@
+;;; FIXME: error checking all around!!!
+
 ;; (@def @def
 ;;   (@op (name expr) env
 ;;     (#%cont/env ()
@@ -61,4 +63,21 @@
              (#%head (#%tail (#%tail operands))))
             env)))
 
+;; TODO: vector and map evaluation
+;; (@def eval* (@fn (expr env) expr))
+(@def eval* (@fn args (#%head args)))
+
+;; (@def combine*
+;;   (@fn (op operand)
+;;     (@if (continuation? op)
+;;       (#%throw op operand)
+;;       (#%err op))))
+(@def combine*
+  (@fn args
+    (@if (#%cont? (#%head args))
+      (#%throw (#%head args) (#%head (#%tail args)))
+      (#%err (#%head args)))))
+
 (@if #t ((@fn xs xs) 3) 5)
+
+(#%call/cc (@fn args ((#%wrap (#%head args)) (@if #t 3 5))))

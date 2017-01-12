@@ -4,7 +4,8 @@
             [masp.util :refer [assoc-symbol]])
   (:import [masp.value PrimOp Applicative Continuation CompoundOp]))
 
-;;; TODO: make -eval and -combine extensible
+;;; TODO: delimited continuations (?)
+;;; QUESTION: should 'evlis' be extensible too (esp. wrt. f:(a b)/arr:[i] etc.)?
 
 (defn- -eval [ctrl env cont]
   (cond
@@ -24,7 +25,9 @@
       [:err [:unbound ctrl]])
 
     :else
-    [:continue ctrl nil nil cont]))
+    (if-let [ext-eval (get env 'eval*)]
+      [:combine (.op ext-eval) [ctrl env] env cont]
+      [:continue ctrl nil env cont])))
 
 (defn- -continue [value cont]
   (case (peek cont)
@@ -77,7 +80,9 @@
                          cont* (into cont [env op operands 0 :arg])]
                      [:eval ctrl nil env cont*])
                    [:combine (.op op) [] env cont])
-    Continuation [:continue operand nil nil (.cont op)]))
+    (if-let [ext-combine (get env 'combine*)]
+      [:combine (.op ext-combine) [op operand] env cont]
+      [:err [:noncombiner op]])))
 
 (defn eval [ctrl env cont]
   (loop [label :eval, ctrl ctrl, operand nil, env env, cont cont]

@@ -1,10 +1,12 @@
 (ns masp.core
   (:refer-clojure :exclude [read-string eval])
-  (:require [masp.value :refer [mfn mfn*]]
+  (:require [masp.value :refer [mfn mfn* inject-bool]]
             [masp.read :as r]
             [masp.eval :as e])
   (:import [masp.value Tagpair Ignore
                        PrimOp Applicative Continuation CompoundOp]))
+
+;;; FIXME: eval(*) should be [Env Expr] -> Any instead of [Expr Env] -> Any
 
 (defn- op [[name formal eformal body] env cont]
   [:continue (CompoundOp. name formal eformal body env) nil nil cont])
@@ -24,9 +26,11 @@
    (symbol "#%unwrap") (mfn [f] (.op f))
    (symbol "#%eval") (mfn* [[expr env] _ cont] [:eval expr nil env cont])
    (symbol "#%apply") (mfn* [[f args] env cont] [:combine f args env cont])
+   (symbol "#%cont?") (mfn [v] (inject-bool (instance? Continuation v)))
    (symbol "#%call/cc") (mfn* [[f] env cont]
-                          (let [k (Applicative. (Continuation. cont))]
-                            [:combine f k env cont]))
+                          (let [k (Continuation. cont)]
+                            [:combine f [k] env cont]))
+   (symbol "#%throw") (mfn* [[k v] _ _] [:continue v nil nil (.cont k)])
    ;; TODO: fail if (not= (peek cont) :stmt)
    ;; OR?: always have an env at (get cont (- (count cont) 2))
    (symbol "#%cont/env") (mfn* [[value env] _ cont]

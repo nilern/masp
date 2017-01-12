@@ -1,6 +1,6 @@
 (ns masp.read
   (:refer-clojure :exclude [read-string])
-  (:require [masp.value :refer [ignore mfn]]
+  (:require [masp.value :refer [ignore mfn inject-bool]]
             [instaparse.core :as insta])
   (:import masp.value.Tagpair))
 
@@ -12,9 +12,7 @@
     {:program #(cons (symbol "#@begin") (apply list %&))
      :expr identity
      :list #(apply list %&)
-     :boolean #(case %
-                 "#t" (Tagpair. :True (mfn [x _] x))
-                 "#f" (Tagpair. :False (mfn [_ x] x)))
+     :boolean #(inject-bool (case % "#t" true "#f" false))
      :number #(Integer/parseInt %)
      :ignore (constantly ignore)
      :keyword keyword

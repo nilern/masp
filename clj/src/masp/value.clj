@@ -20,3 +20,8 @@
 (deftype Ignore [])
 
 (def ignore (Ignore.))
+
+(defn inject-bool [v]
+  (if v
+    (Tagpair. :true (mfn [x _] x))
+    (Tagpair. :false (mfn [_ x] x))))
