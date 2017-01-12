@@ -1,12 +1,16 @@
 (ns masp.eval
   (:refer-clojure :exclude [subvec eval])
-  (:require [clojure.core.rrb-vector :refer [subvec]])
+  (:require [clojure.core.rrb-vector :refer [subvec]]
+            [masp.util :refer [assoc-symbol]])
   (:import [masp.value PrimOp Applicative Continuation CompoundOp]))
+
+;;; TODO: make -eval and -combine extensible
 
 (defn- -eval [ctrl env cont]
   (cond
     (and (seq? ctrl) (seq ctrl))
-    (let [[op & operand] ctrl
+    (let [op (first ctrl)
+          operand (or (next ctrl) '())
           cont* (into cont [operand env :op])]
       [:eval op nil env cont*])
 
@@ -27,7 +31,7 @@
     :op
     (let [[operand env _] (take-last 3 cont)
           cont* (subvec cont 0 (- (count cont) 3))]
-      [:apply value operand env cont*])
+      [:combine value operand env cont*])
 
     :arg
     (let [[n _] (take-last 2 cont)
@@ -43,7 +47,7 @@
         (let [args (subvec cont (- (count cont) n 2) (- (count cont) 2))
               arg (conj args value)
               cont* (subvec cont 0 (- (count cont) 2 n 3))]
-          [:apply op arg env cont*])))
+          [:combine (.op op) arg env cont*])))
 
     :stmt
     (let [[env stmts _] (take-last 3 cont)]
@@ -60,36 +64,28 @@
     :err
     [:err value]))
 
-(defn- -apply [op operand env cont]
+(defn- -combine [op operand env cont]
   (condp instance? op
     PrimOp       ((.f op) operand env cont)
-    CompoundOp   (let [assoc-symbol (fn [env k v]
-                                      (if (symbol? k)
-                                        (assoc env k v)
-                                        env))
+    CompoundOp   (let [ctrl* (.body op)
                        env* (-> (.lex-env op)
-                                (assoc-symbol (.name op) op)
                                 (assoc-symbol (.formal op) operand)
                                 (assoc-symbol (.eformal op) env))]
-                   [:eval (.body op) nil env* cont])
-    ;; FIXME: should remove `:op` frame from cont:
-    ;; FIXME: `(.op op)` should probably get `op` as (.name (.op op)):
-    Applicative  (let [op (.op op)]
-                   (if (seq operand)
-                     (let [[ctrl & operands] operand
-                           cont* (into cont [env op operands 0 :arg])]
-                       [:eval ctrl nil env cont*])
-                     [:apply op operand env cont]))
+                   [:eval ctrl* nil env* cont])
+    Applicative  (if (seq operand)
+                   (let [[ctrl & operands] operand
+                         cont* (into cont [env op operands 0 :arg])]
+                     [:eval ctrl nil env cont*])
+                   [:combine (.op op) [] env cont])
     Continuation [:continue operand nil nil (.cont op)]))
 
 (defn eval [ctrl env cont]
   (loop [label :eval, ctrl ctrl, operand nil, env env, cont cont]
-    (println (class cont))
     (let [[label* :as state*]
           (case label
             :eval     (-eval ctrl env cont)
             :continue (-continue ctrl cont)
-            :apply    (-apply ctrl operand env cont))]
+            :combine  (-combine ctrl operand env cont))]
       (if (or (= label* :ok) (= label* :err))
         state*
         (let [[label* ctrl* operand* env* cont*] state*]

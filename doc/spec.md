@@ -4,10 +4,8 @@ Operations
 Core Operatives
 --------------------------------------------------------------------------------
 
-### @op and @op*
+### @op
 
-    (@op* <self: pattern> <formal: pattern> <eformal: pattern>
-      <body: expr*>)
     (@op <formal: pattern> <eformal: pattern>
       <body: expr*>)
 
@@ -15,11 +13,6 @@ Create an operative. When the operative is applied, it will match the operand
 list with `formal` and the dynamic environment with `eformal`, extending the
 static environment. The `body` forms are then evaluated in this extended
 environment as if by `@begin`.
-
-The `self` operand of `@op*` can be used to create a binding for the operative
-itself within its body. This is convenient for direct recursion. The pattern is
-saved into closures of the operand expression which is also useful for
-debugging.
 
 #### Derivation
 
@@ -33,10 +26,8 @@ debugging.
           (eval (list* @begin ,body) env*)
           (error "failed match" ,formal ,fsym))))
 
-### @fn and @fn*
+### @fn
 
-    (@fn* <self: pattern> <formal: pattern>
-      <body: expr*>)
     (@fn <formal: pattern>
       <body: expr*>)
 
@@ -44,8 +35,6 @@ Create an applicative. When the applicative is applied, it will evaluate its
 operands to create an argument list which it will then match with `formal` and
 the dynamic environment with `eformal`, extending the static environment. The
 `body` forms are then evaluated in this extended environment as if by `@begin`.
-
-The `self` operand is used as in `@op*`.
 
 #### Derivation
 

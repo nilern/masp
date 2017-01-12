@@ -23,10 +23,10 @@
    (symbol "#%wrap") (mfn [f] (Applicative. f))
    (symbol "#%unwrap") (mfn [f] (.op f))
    (symbol "#%eval") (mfn* [[expr env] _ cont] [:eval expr nil env cont])
-   (symbol "#%apply") (mfn* [[f args] env cont] [:apply f args env cont])
+   (symbol "#%apply") (mfn* [[f args] env cont] [:combine f args env cont])
    (symbol "#%call/cc") (mfn* [[f] env cont]
                           (let [k (Applicative. (Continuation. cont))]
-                            [:apply f k env cont]))
+                            [:combine f k env cont]))
    ;; TODO: fail if (not= (peek cont) :stmt)
    ;; OR?: always have an env at (get cont (- (count cont) 2))
    (symbol "#%cont/env") (mfn* [[value env] _ cont]
