@@ -12,6 +12,12 @@
                (#%assoc env (#%head operands)
                         (#%eval (#%head (#%tail operands)) env))))))
 
+(@def @def!
+  (#@op @def! operands env
+    (#%cont/env ()
+      (#%assoc! env (#%head operands)
+                (#%eval (#%head (#%tail operands)) env)))))
+
 (@def @begin #@begin)
 
 ;; (@def @op*
@@ -78,6 +84,13 @@
       (#%throw (#%head args) (#%head (#%tail args)))
       (#%err (#%head args)))))
 
-(@if #t ((@fn xs xs) 3) 5)
+(@def @declare
+  (#@op @declare names env
+    (#%cont/env ()
+      (#%reserve env (#%head names)))))
 
-(#%call/cc (@fn args ((#%wrap (#%head args)) (@if #t 3 5))))
+(@declare foo)
+
+(@def! foo (@fn _ foo))
+
+(foo)

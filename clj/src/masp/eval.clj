@@ -4,6 +4,7 @@
             [masp.util :refer [assoc-symbol]])
   (:import [masp.value PrimOp Applicative Continuation CompoundOp]))
 
+;;; FIXME: last :stmt should be in tail position
 ;;; TODO: delimited continuations (?)
 ;;; QUESTION: should 'evlis' be extensible too (esp. wrt. f:(a b)/arr:[i] etc.)?
 

@@ -56,15 +56,17 @@
                          Applicative :applicative
                          Continuation :continuation))
 
-   (symbol "#%assoc") (mfn [coll k v] (assoc coll k v))
-   (symbol "#%assoc!") (mfn [coll k v]
-                         (update coll k
-                           (fn [ov]
-                             (if (and (instance? clojure.lang.Atom ov)
-                                      (= @ov nil))
-                               (do (reset! ov v) ov)
-                               v))))
+   (symbol "#%get") (mfn [coll k] (get coll k))
    (symbol "#%reserve") (mfn [coll k] (assoc coll k (atom nil)))
+   (symbol "#%assoc!") (mfn* [[coll k v] _ cont]
+                         (let [ov (get coll k)]
+                           (if (and (instance? clojure.lang.Atom ov)
+                                    (nil? @ov))
+                             (do
+                               (reset! ov v)
+                               [:continue coll nil nil cont])
+                             [:err [:unassignable ov]])))
+   (symbol "#%assoc") (mfn [coll k v] (assoc coll k v))
 
    (symbol "#%head") (mfn [[x]] x)
    (symbol "#%tail") (mfn [[_ & xs]] xs)
