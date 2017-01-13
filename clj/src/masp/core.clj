@@ -11,12 +11,13 @@
 (defn- op [[name formal eformal body] env cont]
   [:continue (CompoundOp. name formal eformal body env) nil nil cont])
 
-(defn- begin [stmts env cont]
-  (if (seq stmts)
-    (let [[stmt & stmts*] stmts
-          cont* (into cont [env stmts* :stmt])]
-      [:eval stmt nil env cont*])
-    [:continue nil nil nil cont]))
+(defn- begin [[stmt & stmts] env cont]
+  (if stmt
+    (if stmts
+      (let [cont* (into cont [env stmts :stmt])]
+        [:eval stmt nil env cont*])
+      [:eval stmt nil env cont])
+    [:continue () nil nil cont]))
 
 (def default-env
   {(symbol "#@op") (PrimOp. op)

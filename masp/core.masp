@@ -85,12 +85,12 @@
       (#%err (#%head args)))))
 
 (@def @declare
-  (#@op @declare names env
+  (@op* @declare names env
     (#%cont/env ()
       (#%reserve env (#%head names)))))
 
 (@declare foo)
 
-(@def! foo (@fn _ foo))
+(@def! foo (@fn #_ foo))
 
 (foo)

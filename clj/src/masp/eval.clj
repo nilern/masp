@@ -4,8 +4,10 @@
             [masp.util :refer [assoc-symbol]])
   (:import [masp.value PrimOp Applicative Continuation CompoundOp]))
 
-;;; FIXME: last :stmt should be in tail position
 ;;; TODO: delimited continuations (?)
+;;; QUESTION: How to avoid the unfortunate result of
+;;;           (@begin ((@fn #_ (@def foo 5))) foo) ;=> 5
+;;;     * Seriously, is avoiding @let worth all this?
 ;;; QUESTION: should 'evlis' be extensible too (esp. wrt. f:(a b)/arr:[i] etc.)?
 
 (defn- -eval [ctrl env cont]
@@ -54,11 +56,13 @@
           [:combine (.op op) arg env cont*])))
 
     :stmt
-    (let [[env stmts _] (take-last 3 cont)]
-      (if (seq stmts)
-        (let [[stmt & stmts*] stmts
-              cont* (assoc cont (- (count cont) 2) stmts*)]
-          [:eval stmt nil env cont*])
+    (let [[env [stmt & stmts] _] (take-last 3 cont)]
+      (if stmt
+        (if stmts
+          (let [cont* (assoc cont (- (count cont) 2) stmts)]
+            [:eval stmt nil env cont*])
+          (let [cont* (subvec cont 0 (- (count cont) 3))]
+            [:eval stmt nil env cont*]))
         (let [cont* (subvec cont 0 (- (count cont) 3))]
           [:continue value nil nil cont*])))
 
