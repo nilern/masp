@@ -1,4 +1,5 @@
 ;;; FIXME: error checking all around!!!
+;;; TODO: @begin and @do
 
 ;; (@def @def
 ;;   (@op (name expr) env
@@ -23,21 +24,9 @@
     (#%cont/env ()
       (#%reserve env names))))
 
-(@def @begin #@begin)
+;; TODO: pattern matching (pretty much a nop right now):
+(@def @op* #@op)
 
-;; (@def @op*
-;;   (@op (self formal eformal & body) env
-;;     (eval (list #@op self formal eformal (cons @begin body)) env)))
-(@def @op*
-  (#@op @op* operands env
-    (#%eval (#%cons #@op
-              (#%cons (#%head operands)
-                (#%cons (#%head (#%tail operands))
-                  (#%cons (#%head (#%tail (#%tail operands)))
-                          (#%cons (#%cons @begin
-                                          (#%tail (#%tail (#%tail operands))))
-                                  ())))))
-            env)))
 ;; (@def @op
 ;;   (@op* @op operands env
 ;;     (eval (list* @op* #_ operands) env)))

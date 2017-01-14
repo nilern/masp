@@ -72,12 +72,17 @@
                                       (if (symbol? name)
                                         (assoc bindings name value)
                                         bindings))
-                       ctrl* (.body op)
+                       [stmt & stmts] (.body op)
                        bindings* (-> {}
                                      (assoc-symbol (.formal op) operand)
                                      (assoc-symbol (.eformal op) env))
                        env* (e/environment (.lex-env op) bindings* (.name op))]
-                   [:eval ctrl* nil env* cont])
+                   (if stmt
+                     (if stmts
+                       (let [cont* (into cont [env* stmts :stmt])]
+                         [:eval stmt nil env* cont*])
+                       [:eval stmt nil env* cont])
+                     [:continue () nil nil cont]))
     Applicative  (if (seq operand)
                    (let [[ctrl & operands] operand
                          cont* (into cont [env op operands 0 :arg])]

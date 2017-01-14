@@ -10,7 +10,7 @@
 
 ;;; FIXME: eval(*) should be [Env Expr] -> Any instead of [Expr Env] -> Any
 
-(defn- op [[name formal eformal body] env cont]
+(defn- op [[name formal eformal & body] env cont]
   [:continue (CompoundOp. name formal eformal body env) nil nil cont])
 
 (defn- begin [[stmt & stmts] env cont]
@@ -23,7 +23,7 @@
 
 (def default-bindings
   {(symbol "#@op") (PrimOp. op)
-   (symbol "#@begin") (PrimOp. begin)
+   ;(symbol "#@begin") (PrimOp. begin)
 
    (symbol "#%wrap") (mfn [f] (Applicative. f))
    (symbol "#%unwrap") (mfn [f] (.op f))

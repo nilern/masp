@@ -9,7 +9,8 @@
 
 (def ptree->sexpr
   (partial insta/transform
-    {:program #(cons (symbol "#@begin") (apply list %&))
+    {:program #(list (list* (symbol "#@op") ignore ignore ignore
+                            (apply list %&)))
      :expr identity
      :list #(apply list %&)
      :boolean #(inject-bool (case % "#t" true "#f" false))
