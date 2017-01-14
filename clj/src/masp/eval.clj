@@ -1,13 +1,10 @@
 (ns masp.eval
   (:refer-clojure :exclude [subvec eval])
   (:require [clojure.core.rrb-vector :refer [subvec]]
-            [masp.util :refer [assoc-symbol]])
+            [masp.env :as e])
   (:import [masp.value PrimOp Applicative Continuation CompoundOp]))
 
 ;;; TODO: delimited continuations (?)
-;;; QUESTION: How to avoid the unfortunate result of
-;;;           (@begin ((@fn #_ (@def foo 5))) foo) ;=> 5
-;;;     * Seriously, is avoiding @let worth all this?
 ;;; QUESTION: should 'evlis' be extensible too (esp. wrt. f:(a b)/arr:[i] etc.)?
 
 (defn- -eval [ctrl env cont]
@@ -19,16 +16,12 @@
       [:eval op nil env cont*])
 
     (symbol? ctrl)
-    (if-let [value (get env ctrl)]
-      (if (instance? clojure.lang.Atom value)
-        (if-let [value* @value]
-          [:continue value* nil nil cont]
-          [:err [:unbound ctrl]])
-        [:continue value nil nil cont])
+    (if-let [value (e/lookup env ctrl)]
+      [:continue value nil nil cont]
       [:err [:unbound ctrl]])
 
     :else
-    (if-let [ext-eval (get env 'eval*)]
+    (if-let [ext-eval (e/lookup env 'eval*)]
       [:combine (.op ext-eval) [ctrl env] env cont]
       [:continue ctrl nil env cont])))
 
@@ -75,17 +68,22 @@
 (defn- -combine [op operand env cont]
   (condp instance? op
     PrimOp       ((.f op) operand env cont)
-    CompoundOp   (let [ctrl* (.body op)
-                       env* (-> (.lex-env op)
-                                (assoc-symbol (.formal op) operand)
-                                (assoc-symbol (.eformal op) env))]
+    CompoundOp   (let [assoc-symbol (fn [bindings name value]
+                                      (if (symbol? name)
+                                        (assoc bindings name value)
+                                        bindings))
+                       ctrl* (.body op)
+                       bindings* (-> {}
+                                     (assoc-symbol (.formal op) operand)
+                                     (assoc-symbol (.eformal op) env))
+                       env* (e/environment (.lex-env op) bindings* (.name op))]
                    [:eval ctrl* nil env* cont])
     Applicative  (if (seq operand)
                    (let [[ctrl & operands] operand
                          cont* (into cont [env op operands 0 :arg])]
                      [:eval ctrl nil env cont*])
                    [:combine (.op op) [] env cont])
-    (if-let [ext-combine (get env 'combine*)]
+    (if-let [ext-combine (e/lookup env 'combine*)]
       [:combine (.op ext-combine) [op operand] env cont]
       [:err [:noncombiner op]])))
 

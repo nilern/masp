@@ -2,9 +2,11 @@
   (:refer-clojure :exclude [read-string eval])
   (:require [masp.value :refer [mfn mfn* inject-bool]]
             [masp.read :as r]
-            [masp.eval :as e])
+            [masp.eval :as e]
+            [masp.env :as env])
   (:import [masp.value Tagpair Ignore
-                       PrimOp Applicative Continuation CompoundOp]))
+                       PrimOp Applicative Continuation CompoundOp]
+           [masp.env SDAEnv]))
 
 ;;; FIXME: eval(*) should be [Env Expr] -> Any instead of [Expr Env] -> Any
 
@@ -19,7 +21,7 @@
       [:eval stmt nil env cont])
     [:continue () nil nil cont]))
 
-(def default-env
+(def default-bindings
   {(symbol "#@op") (PrimOp. op)
    (symbol "#@begin") (PrimOp. begin)
 
@@ -34,9 +36,12 @@
    (symbol "#%throw") (mfn* [[k v] _ _] [:continue v nil nil (.cont k)])
    ;; TODO: fail if (not= (peek cont) :stmt)
    ;; OR?: always have an env at (get cont (- (count cont) 2))
-   (symbol "#%cont/env") (mfn* [[value env] _ cont]
-                           (let [cont* (assoc cont (- (count cont) 3) env)]
-                             [:continue value nil nil cont*]))
+   (symbol "#%cont/env") (mfn* [[value env*] _ cont]
+                           (let [env (get cont (- (count cont) 3))]
+                             (if (env/scope= env env*)
+                               (let [cont* (assoc cont (- (count cont) 3) env*)]
+                                 [:continue value nil nil cont*])
+                               [:err [:scope env env*]])))
    (symbol "#%err") (mfn* [[value] _ cont]
                       [:continue value nil nil [:err]])
 
@@ -55,19 +60,16 @@
                          PrimOp :operative
                          CompoundOp :operative
                          Applicative :applicative
-                         Continuation :continuation))
+                         Continuation :continuation
 
-   (symbol "#%get") (mfn [coll k] (get coll k))
-   (symbol "#%reserve") (mfn [coll k] (assoc coll k (atom nil)))
-   (symbol "#%assoc!") (mfn* [[coll k v] _ cont]
-                         (let [ov (get coll k)]
-                           (if (and (instance? clojure.lang.Atom ov)
-                                    (nil? @ov))
-                             (do
-                               (reset! ov v)
-                               [:continue coll nil nil cont])
-                             [:err [:unassignable ov]])))
-   (symbol "#%assoc") (mfn [coll k v] (assoc coll k v))
+                         SDAEnv :environment))
+
+   (symbol "#%extend") (mfn [env k v] (env/extend env k v))
+   (symbol "#%reserve") (mfn [env k] (env/reserve env k))
+   (symbol "#%claim!") (mfn* [[env k v] _ cont]
+                         (if-let [env* (env/claim! env k v)]
+                           [:continue env nil nil cont]
+                           [:err [:unsettable k]]))
 
    (symbol "#%head") (mfn [[x]] x)
    (symbol "#%tail") (mfn [[_ & xs]] xs)
@@ -81,6 +83,6 @@
 
 (defn eval
   ([ctrl]
-    (eval ctrl default-env))
+    (eval ctrl (env/environment default-bindings)))
   ([ctrl env]
     (e/eval ctrl env [:halt])))

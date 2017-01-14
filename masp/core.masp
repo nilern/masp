@@ -5,18 +5,23 @@
 ;;     (#%cont/env ()
 ;;       (assoc env name (eval expr env)))))
 (#%cont/env ()
-  (#%assoc ((#@op get-env #_ env env))
-           ((#@op id-op operands #_ (#%head operands)) @def)
-           (#@op @def operands env
-             (#%cont/env ()
-               (#%assoc env (#%head operands)
-                        (#%eval (#%head (#%tail operands)) env))))))
+  (#%extend ((#@op get-env #_ env env))
+            ((#@op id-op operands #_ (#%head operands)) @def)
+            (#@op @def operands env
+              (#%cont/env ()
+                (#%extend env (#%head operands)
+                          (#%eval (#%head (#%tail operands)) env))))))
 
 (@def @def!
   (#@op @def! operands env
     (#%cont/env ()
-      (#%assoc! env (#%head operands)
+      (#%claim! env (#%head operands)
                 (#%eval (#%head (#%tail operands)) env)))))
+
+(@def @declare
+  (#@op @declare names env
+    (#%cont/env ()
+      (#%reserve env names))))
 
 (@def @begin #@begin)
 
@@ -33,7 +38,6 @@
                                           (#%tail (#%tail (#%tail operands))))
                                   ())))))
             env)))
-
 ;; (@def @op
 ;;   (@op* @op operands env
 ;;     (eval (list* @op* #_ operands) env)))
@@ -83,11 +87,6 @@
     (@if (#%cont? (#%head args))
       (#%throw (#%head args) (#%head (#%tail args)))
       (#%err (#%head args)))))
-
-(@def @declare
-  (@op* @declare names env
-    (#%cont/env ()
-      (#%reserve env (#%head names)))))
 
 (@declare foo)
 
