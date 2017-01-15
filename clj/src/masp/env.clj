@@ -1,8 +1,6 @@
 (ns masp.env
   (:refer-clojure :exclude [extend]))
 
-;;; FIXME: cancel all reservations on -push-frame
-
 (defprotocol IEnvironment
   (lookup [self name]
     "Look up value of variable. Returns nil if name is unbound.")
@@ -24,7 +22,7 @@
     "What is the name of the operative for whose activation this environment was
      created?"))
 
-(deftype SDAEnv [bindings op-name op-id]
+(deftype SDAEnv [bindings reservations op-name op-id]
   IEnvironment
   (lookup [_ name]
     (when-let [v (get bindings name)]
@@ -32,16 +30,19 @@
         @v
         v)))
   (-push-frame [self bindings* op-name* op-id*]
-    (SDAEnv. (merge bindings bindings*) op-name* op-id*))
+    (SDAEnv. (merge (apply dissoc bindings @reservations) bindings*)
+             (atom #{}) op-name* op-id*))
   (extend [_ name value]
-    (SDAEnv. (assoc bindings name value) op-name op-id))
+    (SDAEnv. (assoc bindings name value) (atom @reservations) op-name op-id))
   (reserve [self names]
     (SDAEnv. (merge bindings (zipmap names (repeatedly #(atom nil))))
+             (atom (into @reservations names))
              op-name op-id))
   (claim! [self name value]
     (when-let [loc (get bindings name)]
       (when (and (instance? clojure.lang.Atom loc) (nil? @loc))
         (reset! loc value)
+        (swap! reservations disj name)
         self)))
   (scope= [self other]
     (= op-id (.-op_id other)))
@@ -54,6 +55,6 @@
       ([]
        (environment {}))
       ([bindings]
-       (SDAEnv. bindings nil (swap! id-counter inc)))
+       (SDAEnv. bindings (atom #{}) nil (swap! id-counter inc)))
       ([parent bindings op-name]
        (-push-frame parent bindings op-name (swap! id-counter inc))))))

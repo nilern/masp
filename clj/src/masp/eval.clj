@@ -88,7 +88,7 @@
       [:err [:noncombiner op]])))
 
 (defn eval [ctrl env cont]
-  (loop [label :eval, ctrl ctrl, operand nil, env env, cont cont]
+  (loop [[label ctrl operand env cont] [:eval ctrl nil env cont]]
     (let [[label* :as state*]
           (case label
             :eval     (-eval ctrl env cont)
@@ -96,5 +96,4 @@
             :combine  (-combine ctrl operand env cont))]
       (if (or (= label* :ok) (= label* :err))
         state*
-        (let [[label* ctrl* operand* env* cont*] state*]
-          (recur label* ctrl* operand* env* cont*))))))
+        (recur state*)))))

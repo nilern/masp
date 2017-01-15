@@ -1,7 +1,5 @@
 (ns masp.cont)
 
-;;; TODO: delimited continuations
-
 (defprotocol IContinuation
   (peek-frame [self]
     "Return the topmost frame of self.")
