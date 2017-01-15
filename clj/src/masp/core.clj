@@ -21,12 +21,6 @@
    (symbol "#%wrap") (mfn [f] (Applicative. f))
    (symbol "#%unwrap") (mfn [f] (.op f))
    (symbol "#%eval") (mfn* [[expr env] _ cont] [:eval expr nil env cont])
-   (symbol "#%apply") (mfn* [[f args] env cont] [:combine f args env cont])
-   (symbol "#%cont?") (mfn [v] (inject-bool (instance? Continuation v)))
-   (symbol "#%call/cc") (mfn* [[f] env cont]
-                          (let [k (Continuation. cont)]
-                            [:combine f [k] env cont]))
-   (symbol "#%throw") (mfn* [[k v] _ _] [:continue v nil nil (.cont k)])
    (symbol "#%cont/env") (mfn* [[value env*] _ cont]
                            (let [[label env stmts] (k/peek-frame cont)]
                              (if (and (= label :stmt) (env/scope= env env*))
@@ -36,6 +30,20 @@
                                [:err [:scope label env env*]])))
    (symbol "#%err") (mfn* [[value] _ cont]
                       [:continue value nil nil [:err]])
+
+   (symbol "#%abort") (mfn* [[p v] _ cont]
+                        (let [cont* (k/pop-subcont cont p)]
+                          [:continue v nil nil cont*]))
+   (symbol "#@prompt") (PrimOp.
+                         (fn [[p expr] env cont]
+                           (let [cont* (k/push-mark cont p ())]
+                             [:eval expr nil env cont*])))
+   (symbol "#%call/sc") (mfn* [[p f] env cont]
+                          (let [k (Continuation. (k/subcont cont p))]
+                            [:combine (.op f) [k] env cont]))
+   (symbol "#%push/sc") (mfn* [[k v] _ cont]
+                          (let [cont* (k/append-subcont cont (.cont k))]
+                            [:continue v nil nil cont*]))
 
    (symbol "#%type") (mfn [val]
                        (condp instance? val

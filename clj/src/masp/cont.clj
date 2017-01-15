@@ -10,14 +10,36 @@
   (push-frame [self frame]
     "Return a new continuation with frame on top of self.")
   (replace-frame [self frame]
-    "Like push-frame, but replaces topmost frame instead of appending."))
+    "Like push-frame, but replaces topmost frame instead of appending.")
 
-(deftype ContStack [data]
+  (subcont [self prompt]
+    "Return a subcontinuation up to the topmost appearance of prompt.")
+  (pop-subcont [self prompt]
+    "Remove frames up to the topmost appearance of prompt.")
+  (append-subcont [self subk]
+    "Extend self with subk.")
+
+  (push-mark [self key value]
+    "Add a mark with key and value to the topmost frame."))
+
+(deftype ContStack [frames]
   IContinuation
-  (peek-frame [_] (peek data))
-  (pop-frame [_] (ContStack. (pop data)))
-  (push-frame [_ frame] (ContStack. (conj data frame)))
-  (replace-frame [_ frame] (ContStack. (-> data pop (conj frame)))))
+  (peek-frame [_] (first frames))
+  (pop-frame [_] (ContStack. (rest frames)))
+  (push-frame [_ frame] (ContStack. (cons frame frames)))
+  (replace-frame [_ frame] (ContStack. (->> frames rest (cons frame))))
+
+  (subcont [_ prompt]
+    (ContStack. (take-while (fn [frame] (not (contains? (meta frame) prompt)))
+                            frames)))
+  (pop-subcont [_ prompt]
+    (ContStack. (drop-while (fn [frame] (not (contains? (meta frame) prompt)))
+                            frames)))
+  (append-subcont [_ subk]
+    (ContStack. (concat (.frames subk) frames)))
+
+  (push-mark [self k v]
+    (replace-frame self (vary-meta (first frames) assoc k v))))
 
 (defn cont-stack []
-  (ContStack. [[:halt]]))
+  (ContStack. (list [:halt])))

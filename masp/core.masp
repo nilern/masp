@@ -76,9 +76,3 @@
     (@if (#%cont? (#%head args))
       (#%throw (#%head args) (#%head (#%tail args)))
       (#%err (#%head args)))))
-
-(@declare foo)
-
-(@def! foo (@fn #_ foo))
-
-(foo)
