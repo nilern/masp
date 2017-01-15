@@ -1,6 +1,8 @@
 (ns masp.env
   (:refer-clojure :exclude [extend]))
 
+;;; FIXME: cancel all reservations on -push-frame
+
 (defprotocol IEnvironment
   (lookup [self name]
     "Look up value of variable. Returns nil if name is unbound.")

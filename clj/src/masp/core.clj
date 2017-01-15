@@ -3,7 +3,8 @@
   (:require [masp.value :refer [mfn mfn* inject-bool]]
             [masp.read :as r]
             [masp.eval :as e]
-            [masp.env :as env])
+            [masp.env :as env]
+            [masp.cont :as k])
   (:import [masp.value Tagpair Ignore
                        PrimOp Applicative Continuation CompoundOp]
            [masp.env SDAEnv]))
@@ -27,13 +28,12 @@
                             [:combine f [k] env cont]))
    (symbol "#%throw") (mfn* [[k v] _ _] [:continue v nil nil (.cont k)])
    (symbol "#%cont/env") (mfn* [[value env*] _ cont]
-                           (let [cont-label (peek cont)
-                                 env (get cont (- (count cont) 3))]
-                             (if (and (= cont-label :stmt)
-                                      (env/scope= env env*))
-                               (let [cont* (assoc cont (- (count cont) 3) env*)]
+                           (let [[label env stmts] (k/peek-frame cont)]
+                             (if (and (= label :stmt) (env/scope= env env*))
+                               (let [cont*
+                                     (k/replace-frame cont [:stmt env* stmts])]
                                  [:continue value nil nil cont*])
-                               [:err [:scope cont-label env env*]])))
+                               [:err [:scope label env env*]])))
    (symbol "#%err") (mfn* [[value] _ cont]
                       [:continue value nil nil [:err]])
 
@@ -77,4 +77,4 @@
   ([ctrl]
     (eval ctrl (env/environment default-bindings)))
   ([ctrl env]
-    (e/eval ctrl env [:halt])))
+    (e/eval ctrl env (k/cont-stack))))

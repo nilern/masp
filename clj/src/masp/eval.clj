@@ -1,10 +1,10 @@
 (ns masp.eval
   (:refer-clojure :exclude [subvec eval])
   (:require [clojure.core.rrb-vector :refer [subvec]]
-            [masp.env :as e])
+            [masp.env :as e]
+            [masp.cont :as k])
   (:import [masp.value PrimOp Applicative Continuation CompoundOp]))
 
-;;; TODO: delimited continuations (?)
 ;;; QUESTION: should 'evlis' be extensible too (esp. wrt. f:(a b)/arr:[i] etc.)?
 
 (defn- -eval [ctrl env cont]
@@ -12,7 +12,7 @@
     (and (seq? ctrl) (seq ctrl))
     (let [op (first ctrl)
           operand (or (next ctrl) '())
-          cont* (into cont [operand env :op])]
+          cont* (k/push-frame cont [:op env operand])]
       [:eval op nil env cont*])
 
     (symbol? ctrl)
@@ -26,44 +26,39 @@
       [:continue ctrl nil env cont])))
 
 (defn- -continue [value cont]
-  (case (peek cont)
-    :op
-    (let [[operand env _] (take-last 3 cont)
-          cont* (subvec cont 0 (- (count cont) 3))]
-      [:combine value operand env cont*])
+  (let [frame (k/peek-frame cont)]
+    (case (first frame)
+      :op
+      (let [[_ env operand] frame
+            cont* (k/pop-frame cont)]
+        [:combine value operand env cont*])
 
-    :arg
-    (let [[n _] (take-last 2 cont)
-          [env op operands] (take-last 3 (drop-last (+ n 2) cont))]
-      (if (seq operands)
-        (let [[ctrl & operands*] operands
-              cont* (-> cont
-                        (assoc (- (count cont) 2 n 1) operands*)
-                        (assoc (- (count cont) 2) value)
-                        (assoc (- (count cont) 1) (inc n))
-                        (conj :arg))]
-          [:eval ctrl nil env cont*])
-        (let [args (subvec cont (- (count cont) n 2) (- (count cont) 2))
-              arg (conj args value)
-              cont* (subvec cont 0 (- (count cont) 2 n 3))]
-          [:combine (.op op) arg env cont*])))
+      :arg
+      (let [[_ env op operands args] frame
+            args* (conj args value)]
+        (if (seq operands)
+          (let [[ctrl & operands*] operands
+                cont* (k/replace-frame cont [:arg env op operands* args*])]
+            [:eval ctrl nil env cont*])
+          (let [cont* (k/pop-frame cont)]
+            [:combine (.op op) args* env cont*])))
 
-    :stmt
-    (let [[env [stmt & stmts] _] (take-last 3 cont)]
-      (if stmt
-        (if stmts
-          (let [cont* (assoc cont (- (count cont) 2) stmts)]
-            [:eval stmt nil env cont*])
-          (let [cont* (subvec cont 0 (- (count cont) 3))]
-            [:eval stmt nil env cont*]))
-        (let [cont* (subvec cont 0 (- (count cont) 3))]
-          [:continue value nil nil cont*])))
+      :stmt
+      (let [[_ env [stmt & stmts]] frame]
+        (if stmt
+          (if stmts
+            (let [cont* (k/replace-frame cont [:stmt env stmts])]
+              [:eval stmt nil env cont*])
+            (let [cont* (k/pop-frame cont)]
+              [:eval stmt nil env cont*]))
+          (let [cont* (k/pop-frame cont)]
+            [:continue value nil nil cont*])))
 
-    :halt
-    [:ok value]
+      :halt
+      [:ok value]
 
-    :err
-    [:err value]))
+      :err
+      [:err value])))
 
 (defn- -combine [op operand env cont]
   (condp instance? op
@@ -79,13 +74,13 @@
                        env* (e/environment (.lex-env op) bindings* (.name op))]
                    (if stmt
                      (if stmts
-                       (let [cont* (into cont [env* stmts :stmt])]
+                       (let [cont* (k/push-frame cont [:stmt env* stmts])]
                          [:eval stmt nil env* cont*])
                        [:eval stmt nil env* cont])
                      [:continue () nil nil cont]))
     Applicative  (if (seq operand)
                    (let [[ctrl & operands] operand
-                         cont* (into cont [env op operands 0 :arg])]
+                         cont* (k/push-frame cont [:arg env op operands []])]
                      [:eval ctrl nil env cont*])
                    [:combine (.op op) [] env cont])
     (if-let [ext-combine (e/lookup env 'combine*)]
